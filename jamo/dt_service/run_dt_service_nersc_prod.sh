@@ -23,8 +23,8 @@ elif [[ -f "STOP" ]] ; then
 elif [[ -z "$(pgrep -u $(whoami) -f $search)" ]]; then
 
     machine=`uname -n`
-    export PYTHONHTTPSVERIFY=0
-    cd $BIN_HOME/LOGS
+    #export PYTHONHTTPSVERIFY=0
+    cd $DTS_LOG_DIR
 
     # use tmux attach -t <service name> to get to session
     if [ "$machine" == "dtn03.nersc.gov" ] ; then
