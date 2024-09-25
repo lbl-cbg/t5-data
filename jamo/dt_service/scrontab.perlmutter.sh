@@ -6,8 +6,8 @@
 #SCRON -t 90-00:00:00
 #SCRON --time-min=12:00:00
 #SCRON --job-name=jamo_dt_service
-#SCRON --chdir=${DTS_LOG_DIR}
+#SCRON --chdir=/global/cfs/cdirs/m4521/jamo/dt_service
 #SCRON --dependency=singleton
-#SCRON --output=${DTS_LOG_DIR}/dt_service.perlmutter.%j.log
+#SCRON --output=/global/cfs/cdirs/m4521/jamo/dt_service/dt_service.perlmutter.%j.log
 #SCRON --open-mode=append
-* * * * * $DTS_SCRIPT_DIR/run_dt_service_perlmutter_prod.sh
+* * * * * bash /global/common/software/m4521/jamo_code/dt_service/scripts/run_dt_service_perlmutter_prod.sh /global/common/software/m4521/jamo_env
