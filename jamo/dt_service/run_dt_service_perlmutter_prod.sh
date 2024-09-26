@@ -2,7 +2,6 @@
 
 ENV=${1?"Please provide the environment to load before running"}
 
-module load python
 conda activate $ENV
 
 TIME_TO_RUN=2592000  # We want dt_service to run for 30 days
