@@ -16,10 +16,6 @@ COPY lapinpy.git /usr/src/app/jgi-lapinpy
 RUN cd jgi-lapinpy \
     && pip install .
 
-COPY jamo.git /usr/src/app/jgi-jamo
-RUN cd jgi-jamo \
-    && pip install .
-
 COPY sdm-common.git /usr/src/app/jgi-sdm-common
 RUN cd jgi-sdm-common \
     && pip install .
@@ -28,10 +24,17 @@ COPY jat.git /usr/src/app/jgi-jat-ui
 RUN cd jgi-jat-ui \
     && pip install .
 
+COPY jamo.git /usr/src/app/jgi-jamo
+RUN cd jgi-jamo \
+    && pip install .
 
 # Copy the initialization script
 COPY init_and_run.sh /usr/local/bin/init_and_run.sh
 RUN chmod +x /usr/local/bin/init_and_run.sh
+
+# Copy the cleaning script
+COPY clean.sh /usr/local/bin/clean.sh
+RUN chmod +x /usr/local/bin/clean.sh
 
 WORKDIR /var/log
 
