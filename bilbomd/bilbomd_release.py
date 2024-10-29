@@ -84,7 +84,7 @@ else:
         jat_key = f.read().strip()
     print("Data already submitted to JAT")
 
-jamo_url = os.path.join(host, 'analysis', jat_key)
+jamo_url = os.path.join(host, 'analysis/analysis', jat_key)
 print(f"You can view analysis at {jamo_url}")
 
 # Connect to Jira
@@ -94,6 +94,7 @@ jira_token = os.environ['JIRA_TOKEN']  # You can create a token in Jira account 
 
 jira = JIRA(server=jira_server, basic_auth=(jira_user, jira_token))
 issue = jira.issue(args.jira_issue)
+
 
 # Update Ussue field designated for connecting to the results
 # To figure out the number of the custom field of interest, go to
