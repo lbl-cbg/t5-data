@@ -84,10 +84,11 @@ class JiraConnector:
 
 
 def _add_field(asset_data, attr_id, value_key, payload, required=True):
-    if value_key in asset_data:
+    value = asset_data.get(value_key)
+    if value is not None:
         payload.append({
-                "objectTypeAttributeId": attr_id, #JAMO URL
-                "objectAttributeValues": [{'value': asset_data[value_key]}]
+                "objectTypeAttributeId": attr_id,
+                "objectAttributeValues": [{'value': value}]
         })
     elif required:
         raise ValueError(f"Required key {value_key} not provided")
@@ -97,6 +98,7 @@ def make_bilbo_asset(**data):
     asset_data = list()
     _add_field(data, 613, 'name', asset_data) # JAMO URL
     _add_field(data, 616, 'jamo_url', asset_data) # JAMO URL
+    _add_field(data, 684, 'bilbomd_url', asset_data, required=False) # BilboMD URL # TODO: sclassen - set to required=True when this gets added
     _add_field(data, 681, 'ss_asset', asset_data) # Link to SimpleScattering asset
     _add_field(data, 682, 'target_asset', asset_data) # Link to Target asset
     _add_field(data, 683, 'ss_filename', asset_data) # Filename in SimpleScattering record
@@ -211,18 +213,18 @@ print(f"You can view analysis at {jamo_url}")
 
 
 # Create Bilbo Asset and update Issue
+print("Creating asset in Jira for BilboMD")
 new_bilbo_asset = make_bilbo_asset(name=f"{issue['key']} result",
                                    ss_asset=issue['fields']['customfield_10108'][0]['objectId'],
                                    target_asset=issue['fields']['customfield_10113'][0]['objectId'],
                                    ss_filename=issue['fields']['customfield_10115'],
+                                   bilbomd_url=None, #TODO: sclassen - add code to set this
                                    jamo_url=jamo_url)
-
-
 bilbo_asset = jc.create_asset(new_bilbo_asset)
+
 update_data = {"fields": {"customfield_10114": [{'objectId': bilbo_asset['id'],
                                                  'workspaceId': bilbo_asset['workspaceId'],
                                                  'id': bilbo_asset['globalId']}]}}
-
 print(f"Updating issue {args.jira_issue} with asset {bilbo_asset['id']}")
 jc.put(f"api/3/issue/{args.jira_issue}", update_data)
 
