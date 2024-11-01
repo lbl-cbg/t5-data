@@ -2,19 +2,140 @@ import argparse
 import json
 import os
 import sys
+import requests
+from requests.auth import HTTPBasicAuth
 
-from jira import JIRA
-from sdm_curl import Curl
+DONE_STATE = '41'
+TARGET_ID_ID = '97'  # the asset attribute id to use for finding the protein target_id
+PARENT_NAME_ID = '491'
+
+
+class JiraConnector:
+
+    def __init__(self):
+        # Connect to Jira
+        self.jira_server = os.environ.get('JIRA_HOST', 'https://taskforce5.atlassian.net')
+        self.auth = HTTPBasicAuth(os.environ.get('JIRA_USER', 'ajtritt@lbl.gov'), os.environ['JIRA_TOKEN'])
+        # Set up headers for the request
+        self.workspace_id = self.get("servicedeskapi/assets/workspace")["values"][0]["workspaceId"]
+        self.workspace_url = f'https://api.atlassian.com/jsm/assets/workspace/{self.workspace_id}/v1'
+
+    def __get(self, url):
+        # Make the request to get the asset details
+        headers = {
+            "Accept": "application/json"
+        }
+        response = requests.get(url, headers=headers, auth=self.auth)
+        if response.status_code not in [200, 201, 204]:
+            print(f"GET FAIL {url}: {response.status_code} - {response.text}", file=sys.stderr)
+            exit(1)
+        return response.json()
+
+    def __put(self, url, data):
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        response = requests.put(url, headers=headers, auth=self.auth, data=json.dumps(data))
+        if response.status_code not in [200, 201, 204]:
+            print(f"PUT FAIL {url}: {response.status_code} - {response.text}", file=sys.stderr)
+            exit(1)
+
+        return None if response.status_code == 204 else response.json()
+
+    def __post(self, url, data):
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        response = requests.post(url, headers=headers, auth=self.auth, data=json.dumps(data))
+        if response.status_code not in [200, 201, 204]:
+            print(f"POST FAIL {url}: {response.status_code} - {response.text}", file=sys.stderr)
+            exit(1)
+
+        return None if response.status_code == 204 else response.json()
+
+    def get(self, url):
+        url = f'{self.jira_server}/rest/{url}'
+        return self.__get(url)
+
+    def put(self, url, data):
+        url = f'{self.jira_server}/rest/{url}'
+        return self.__put(url, data)
+
+    def post(self, url, data):
+        url = f'{self.jira_server}/rest/{url}'
+        return self.__post(url, data)
+
+    def create_asset(self, data):
+        url = f'{self.workspace_url}/object/create'
+        headers = {
+                    'Content-Type': 'application/json'
+        }
+        response = requests.post(url, headers=headers, auth=self.auth, data=json.dumps(data))
+        if response.status_code not in [200, 201]:
+            print("Failed to create asset:", response.status_code, response.text, file=sys.stderr)
+            exit(1)
+        return response.json()
+
+    def get_asset(self, object_id):
+        url = f"https://api.atlassian.com/jsm/assets/workspace/{self.workspace_id}/v1/object/{object_id}"
+        return self.__get(url)
+
+
+def _add_field(asset_data, attr_id, value_key, payload, required=True):
+    if value_key in asset_data:
+        payload.append({
+                "objectTypeAttributeId": attr_id, #JAMO URL
+                "objectAttributeValues": [{'value': asset_data[value_key]}]
+        })
+    elif required:
+        raise ValueError(f"Required key {value_key} not provided")
+
+
+def make_bilbo_asset(**data):
+    asset_data = list()
+    _add_field(data, 613, 'name', asset_data) # JAMO URL
+    _add_field(data, 616, 'jamo_url', asset_data) # JAMO URL
+    _add_field(data, 681, 'ss_asset', asset_data) # Link to SimpleScattering asset
+    _add_field(data, 682, 'target_asset', asset_data) # Link to Target asset
+    _add_field(data, 683, 'ss_filename', asset_data) # Filename in SimpleScattering record
+    create_data = {
+        "objectTypeId": 34,  # Create a "BilboMD Result" object
+        "attributes": asset_data,
+        "hasAvatar": False  # Optional avatar
+    }
+    return create_data
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("bilbomd_dir", help="the output directory from a BilboMD run")
 parser.add_argument("jira_issue", help="the Jira issue for this BilboMD run")
-parser.add_argument("virus_id", type=str, help="the virus the protein being analyzed belongs to")
-parser.add_argument("protein_id", type=str, help="the protein being analyzed")
 
 args = parser.parse_args()
 
+# Load the JIRA issue and get metadata needed to populate JAT record
+jc = JiraConnector()
+issue = jc.get(f"api/3/issue/{args.jira_issue}")
+target_asset = jc.get_asset(issue['fields']['customfield_10113'][0]['objectId'])
+
+target_id = None
+virus_id = None
+for attr in target_asset['attributes']:
+    if attr['objectTypeAttribute']['id'] == TARGET_ID_ID:
+        target_id = attr['objectAttributeValues'][0]['value']
+    elif attr['objectTypeAttribute']['id'] == PARENT_NAME_ID:
+        virus_id = attr['objectAttributeValues'][0]['referencedObject']['name']
+
+if virus_id is None:
+    print(f"Unable to get virus name from issue {args.jira_issue}", file=sys.stderr)
+    exit(1)
+if target_id is None:
+    print(f"Unable to get protein target from issue {args.jira_issue}", file=sys.stderr)
+    exit(1)
+
+
+# Submit to JAT if not already submitted
 metadata_json = os.path.join(args.bilbomd_dir, 'metadata.json')
 jat_key = None
 jat_key_file = os.path.join(args.bilbomd_dir, 'jat_key')
@@ -23,8 +144,9 @@ if not os.path.exists(metadata_json):
     # Build payload for posting analysis to JAMO
     outputs = []
     inputs = []
-    metadata = {k: getattr(args, k) for k in ('jira_issue', 'virus_id', 'protein_id')}
-    # TODO: Pull in protein_id and virus_id
+    metadata = {'jira_issue': args.jira_issue,
+                'virus_id': virus_id,
+                'protein_id': target_id}
     for file in os.listdir(args.bilbomd_dir):
         path = os.path.realpath(os.path.join(args.bilbomd_dir, file))
         file_metadata = dict()
@@ -87,25 +209,23 @@ else:
 jamo_url = os.path.join(host, 'analysis/analysis', jat_key)
 print(f"You can view analysis at {jamo_url}")
 
-# Connect to Jira
-jira_server = os.environ.get('JIRA_HOST', 'https://taskforce5.atlassian.net')
-jira_user = os.environ.get('JIRA_USER', 'ajtritt@lbl.gov')
-jira_token = os.environ['JIRA_TOKEN']  # You can create a token in Jira account settings
 
-jira = JIRA(server=jira_server, basic_auth=(jira_user, jira_token))
-issue = jira.issue(args.jira_issue)
+# Create Bilbo Asset and update Issue
+new_bilbo_asset = make_bilbo_asset(name=f"{issue['key']} result",
+                                   ss_asset=issue['fields']['customfield_10108'][0]['objectId'],
+                                   target_asset=issue['fields']['customfield_10113'][0]['objectId'],
+                                   ss_filename=issue['fields']['customfield_10115'],
+                                   jamo_url=jamo_url)
 
 
-# Update Ussue field designated for connecting to the results
-# To figure out the number of the custom field of interest, go to
-# Jira -> Settings -> Custom fields (under Fields on the right. Then click on the
-# three dots on the right of the field of interest. A small window will pop up. Click
-# on Edit Details. This will open another page. The URL of this page ends with
-# "id=<NUMBER>". The number here will be the number to append to "customfield_"
-# for updating the field through the API.
+bilbo_asset = jc.create_asset(new_bilbo_asset)
+update_data = {"fields": {"customfield_10114": [{'objectId': bilbo_asset['id'],
+                                                 'workspaceId': bilbo_asset['workspaceId'],
+                                                 'id': bilbo_asset['globalId']}]}}
 
-issue.update(fields={'customfield_10112': jamo_url})
-print(f"Issue {args.jira_issue} updated successfully.")
+print(f"Updating issue {args.jira_issue} with asset {bilbo_asset['id']}")
+jc.put(f"api/3/issue/{args.jira_issue}", update_data)
 
-jira.transition_issue(issue, '41')
-print(f"Issue {args.jira_issue} marked as Done")
+print(f"Closing issue {args.jira_issue}")
+transition_data = {"transition": {"id": DONE_STATE}}
+jc.post(f"api/3/issue/{args.jira_issue}/transitions", transition_data)
