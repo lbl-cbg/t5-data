@@ -42,6 +42,8 @@ spec:
               name: vol-mongo-pass
             - mountPath: /mysql-secrets
               name: vol-mysql-pass
+            - mountPath: /sf-api
+              name: vol-sfapi-key
       dnsPolicy: ClusterFirst
       imagePullSecrets:
         - name: registry-nersc
@@ -67,3 +69,7 @@ spec:
           secret:
             defaultMode: 420
             secretName: jamo-mysql-pass
+        - name: vol-sfapi-key
+          secret:
+            defaultMode: 420
+            secretName: sf-api-key
