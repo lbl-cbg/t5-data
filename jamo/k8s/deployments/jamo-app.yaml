@@ -44,6 +44,8 @@ spec:
               name: vol-mysql-pass
             - mountPath: /sf-api
               name: vol-sfapi-key
+            - mountPath: /google-oauth
+              name: vol-google-oauth-secrets
       dnsPolicy: ClusterFirst
       imagePullSecrets:
         - name: registry-nersc
@@ -73,3 +75,7 @@ spec:
           secret:
             defaultMode: 420
             secretName: sf-api-key
+        - name: vol-google-oauth-secrets
+          secret:
+            defaultMode: 420
+            secretName: google-oauth-secrets
