@@ -1,5 +1,5 @@
 name: viral_protein
-description: small angle X-ray scattering information
+description: information about a viral protein
 required_metadata_keys:
 - description: Identifier for Protein in CSBID
   key: protein_id
