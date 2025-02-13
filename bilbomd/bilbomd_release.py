@@ -4,6 +4,7 @@ import os
 import sys
 import requests
 from requests.auth import HTTPBasicAuth
+from sdm_curl import Curl
 
 DONE_STATE = '41'
 TARGET_ID_ID = '97'  # the asset attribute id to use for finding the protein target_id
