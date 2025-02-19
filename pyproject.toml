@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=42", "wheel"]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -22,6 +22,5 @@ dependencies = [
     "requests"
 ]
 
-[tool.setuptools]
-packages = [{ include = "t5_common" }]
-package-dir = { "" = "src" }
+[tool.setuptools.packages.find]
+where = ["src"]
