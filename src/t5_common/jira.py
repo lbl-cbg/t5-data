@@ -11,10 +11,12 @@ class JiraConnector:
 
     DONE_STATE = '41'
 
-    def __init__(self):
+    def __init__(self, jira_host=None, jira_user=None, jira_token=None):
         # Connect to Jira
-        self.jira_server = os.environ.get('JIRA_HOST', 'https://taskforce5.atlassian.net')
-        self.auth = HTTPBasicAuth(os.environ.get('JIRA_USER', 'ajtritt@lbl.gov'), os.environ['JIRA_TOKEN'])
+        self.jira_server = jira_host or os.environ.get('JIRA_HOST', 'https://taskforce5.atlassian.net')
+        jira_user = jira_user or os.environ.get('JIRA_USER', 'ajtritt@lbl.gov')
+        jira_token = jira_token or os.environ['JIRA_TOKEN']
+        self.auth = HTTPBasicAuth(jira_user, jira_token)
         # Set up headers for the request
         self.workspace_id = self.get("servicedeskapi/assets/workspace")["values"][0]["workspaceId"]
         self.workspace_url = f'https://api.atlassian.com/jsm/assets/workspace/{self.workspace_id}/v1'
@@ -82,11 +84,26 @@ class JiraConnector:
         return self.__get(url)
 
     def update_issue(self, issue, data):
-        self.put(f"api/3/issue/{issue}", data)
+        return self.put(f"api/3/issue/{issue}", data)
 
     def transition_issue(self, issue, state):
         transition_data = {"transition": {"id": state}}
-        self.post(f"api/3/issue/{issue}/transitions", transition_data)
+        return self.post(f"api/3/issue/{issue}/transitions", transition_data)
+
+    def add_comment(self, issue, comment):
+        return self.post(f"api/3/issue/{issue}/comment", {'body': comment})
 
     def close_issue(self, issue):
-        self.transition_issue(issue, self.DONE_STATE)
+        return self.transition_issue(issue, self.DONE_STATE)
+
+    def query(self, jql_query, maxResults=100):
+        """ Query Jira for issues:
+
+        Example query for a given project in a given status:
+            'project = BILBOMD AND status = "In Progress"'
+        """
+        payload = {
+            'jql': jql_query,
+            'maxResults': maxResults
+        }
+        return self.post("api/3/search", payload)

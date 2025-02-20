@@ -1,4 +1,6 @@
 import logging
+import os
+import sys
 
 def parse_logger(string, stream=sys.stderr, level='info'):
     if not string:
@@ -18,3 +20,8 @@ def parse_logger(string, stream=sys.stderr, level='info'):
 def get_logger(level='info'):
     return parse_logger('', level=level)
 
+
+def read_token(path):
+    """Helper for reading token or password files"""
+    with open(os.path.expandvars(path), 'r') as f:
+        return f.read().strip()
