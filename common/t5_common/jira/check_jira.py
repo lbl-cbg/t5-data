@@ -5,8 +5,9 @@ import sys
 import subprocess
 import yaml
 import time
-from t5_common.jira import JiraConnector
-from t5_common.utils import get_logger, read_token
+
+from .jira import JiraConnector
+from ..utils import get_logger, read_token
 
 
 logger = get_logger()

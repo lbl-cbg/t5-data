@@ -4,6 +4,7 @@ import sys
 import requests
 from requests.auth import HTTPBasicAuth
 
+
 TARGET_ID_ID = '97'  # the asset attribute id to use for finding the protein target_id
 PARENT_NAME_ID = '491'
 
@@ -83,6 +84,9 @@ class JiraConnector:
         url = f"https://api.atlassian.com/jsm/assets/workspace/{self.workspace_id}/v1/object/{object_id}"
         return self.__get(url)
 
+    def get_issue(self, issue):
+        return self.get(f"api/3/issue/{issue}")
+
     def update_issue(self, issue, data):
         return self.put(f"api/3/issue/{issue}", data)
 
@@ -107,3 +111,13 @@ class JiraConnector:
             'maxResults': maxResults
         }
         return self.post("api/3/search", payload)
+
+
+def find_asset_attribute(asset, value, key='id'):
+    """Find an asset attribute by id or name"""
+    if key not in ('id', 'name'):
+        raise ValueError("Key must be either 'name' or 'id'")
+    for attr in asset['attributes']:
+        if attr['objectTypeAttribute'][key] == value:
+            return attr['objectAttributeValues']
+    return None
