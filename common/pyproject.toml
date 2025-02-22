@@ -20,3 +20,6 @@ dependencies = [
 
 [project.scripts]
 check-jira = "t5_common.jira.check_jira:main"
+init-db = "t5_common.jira.workflow.database:init_db"
+finish-job = "t5_common.jira.workflow.steps:finish_job"
+publish-job = "t5_common.jira.workflow.steps:publish_job"
