@@ -1,4 +1,5 @@
 
+from .. import JiraConnector
 
 def connect():
     path = "./job.yaml"
