@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "issue": {
+      "type": "string",
+    },
+    "wfm_database": {
+      "type": "string"
+      "pattern": "^(?:[a-zA-Z]:\\\\|\\/)?(?:[^\\\\/:*?\"<>|]+\\\\|[^\\\\/:*?\"<>|]+)/?$"
+    },
+  "required": ["wfm_database", "issue"]
+}
