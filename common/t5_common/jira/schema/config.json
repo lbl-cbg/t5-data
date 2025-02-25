@@ -4,33 +4,39 @@
   "properties": {
     "host": {
       "type": "string",
-      "format": "uri"
+      "format": "uri",
+      "description": "The Jira host to query from"
     },
     "user": {
       "type": "string",
-      "format": "email"
+      "format": "email",
+      "description": "The email of the user to connect to Jira with"
     },
     "token_file": {
-      "type": "string"
-      "pattern": "^(?:[a-zA-Z]:\\\\|\\/)?(?:[^\\\\/:*?\"<>|]+\\\\|[^\\\\/:*?\"<>|]+)/?$"
+      "type": "string",
+      "description": "The path to the file containing the Jira API token"
     },
     "database": {
-      "type": "string"
-      "pattern": "^(?:[a-zA-Z]:\\\\|\\/)?(?:[^\\\\/:*?\"<>|]+\\\\|[^\\\\/:*?\"<>|]+)/?$"
+      "type": "string",
+      "description": "The path to the SQLite database to containing workflow information"
     },
     "projects": {
       "type": "array",
+      "description": "Information required to start workflows from a Jira project",
       "items": {
         "type": "object",
         "properties": {
           "project": {
-            "type": "string"
+            "type": "string",
+            "description": "The Jira project"
           },
           "new_status": {
-            "type": "string"
+            "type": "string",
+            "description": "The status that indicates an issue is new"
           },
           "command": {
-            "type": "string"
+            "type": "string",
+            "description": "The command to run to start a workflow. The command sholuld take the issues as its only command line argument"
           }
         },
         "required": ["project", "new_status", "command"]

@@ -6,7 +6,7 @@
       "type": "string",
     },
     "database": {
-      "type": "string"
+      "type": "string",
       "pattern": "^(?:[a-zA-Z]:\\\\|\\/)?(?:[^\\\\/:*?\"<>|]+\\\\|[^\\\\/:*?\"<>|]+)/?$"
     },
   "required": ["database", "issue"]
