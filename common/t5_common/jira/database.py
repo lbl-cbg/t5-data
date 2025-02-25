@@ -3,6 +3,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy import event
 
+from .utils import load_config
+
 # Create a base class for declarative class definitions
 Base = declarative_base()
 
@@ -66,8 +68,11 @@ def get_session(conn_str):
 def init_db():
 
     parser = argparse.ArgumentParser(description="Set up a database for a Jira workflow tracker")
-    parser.add_argument('database', type=str, help='the connection string to the database')
+    parser.add_argument('config', type=str, help='the config file for the Jira workflow management instance')
     args = parser.parse_args()
+
+    config = load_config(args.config)
+    conn_str = f"sqlite:///{config['database']}"
 
     session = get_session(conn_str)
 
@@ -93,7 +98,7 @@ class DBConnector:
         self.logger = get_logger()
         self.session = get_session(conn_str)
 
-    def new_job(self, issue, job_directory):
+    def start_job(self, issue, job_directory):
         self.logger.info(f"Creating new job for {issue}")
         start_state = self.session.query(JobStates).filter_by(name='STARTED').first()
         return Job(issue=issue, job_directory=job_directory, job_state=start_state)
