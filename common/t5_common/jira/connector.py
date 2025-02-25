@@ -19,8 +19,13 @@ class JiraConnector:
         jira_token = jira_token or os.environ['JIRA_TOKEN']
         self.auth = HTTPBasicAuth(jira_user, jira_token)
         # Set up headers for the request
-        self.workspace_id = self.get("servicedeskapi/assets/workspace")["values"][0]["workspaceId"]
-        self.workspace_url = f'https://api.atlassian.com/jsm/assets/workspace/{self.workspace_id}/v1'
+        self.workspace_id = None
+        self.workspace_url = None
+
+    def __check_workspace(self):
+        if self.workspace_url is None:
+            self.workspace_id = self.get("servicedeskapi/assets/workspace")["values"][0]["workspaceId"]
+            self.workspace_url = f'https://api.atlassian.com/jsm/assets/workspace/{self.workspace_id}/v1'
 
     def __get(self, url):
         # Make the request to get the asset details
@@ -70,6 +75,7 @@ class JiraConnector:
         return self.__post(url, data)
 
     def create_asset(self, data):
+        self.__check_workspace()
         url = f'{self.workspace_url}/object/create'
         headers = {
                     'Content-Type': 'application/json'
@@ -81,6 +87,7 @@ class JiraConnector:
         return response.json()
 
     def get_asset(self, object_id):
+        self.__check_workspace()
         url = f"https://api.atlassian.com/jsm/assets/workspace/{self.workspace_id}/v1/object/{object_id}"
         return self.__get(url)
 
