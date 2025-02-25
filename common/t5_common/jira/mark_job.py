@@ -16,12 +16,7 @@ def _load_schema():
     return schema
 
 
-STEPS = {
-        'finished': 'finish_job',
-        'published': 'publish_job'
-        }
-
-def mark_job(step, directory):
+def get_database(directory)
     schema = _load_schema()
 
     wf_info_path = os.path.join(directory, WF_FILENAME)
@@ -36,9 +31,16 @@ def mark_job(step, directory):
 
     # Get the configuration file for the instance of the workflow management
     # system that this job was started from
-    config = load_config()
-
     database = os.path.join(directory, wf_info['database'])
+    return database
+
+
+STEPS = {
+        'finished': 'finish_job',
+        'published': 'publish_job'
+        }
+
+def mark_job(step, database):
 
     dbc = DBConnector(f"sqlite:///{database}")
 
@@ -55,7 +57,9 @@ def main():
     parser.add_argument('dir', type=str, help='The directory the job was run from', default='./', nargs='?')
     args = parser.parse_args()
 
-    mark_job(args.step, args.dir)
+    database = get_database(args.dir)
+
+    mark_job(args.step, database)
 
 
 if __name__ == "__main__":
