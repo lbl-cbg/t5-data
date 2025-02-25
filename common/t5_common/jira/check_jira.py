@@ -11,6 +11,7 @@ import time
 import yaml
 
 from .connector import JiraConnector
+from .database import DBConnector
 from .utils import load_config, WF_FILENAME
 from ..utils import get_logger, read_token
 
@@ -68,7 +69,7 @@ async def process_issue(issue, project_config, config):
     return process.returncode, wd
 
 
-def check_jira(config):
+async def check_jira(config):
     # Connect to Jira
     jc = JiraConnector(jira_host=config['host'],
                        jira_user=config['user'],
@@ -87,7 +88,7 @@ def check_jira(config):
     database = config['database']
     dbc = DBConnector(f"sqlite:///{database}")
 
-    results = asyncio.gather(tasks)
+    results = await asyncio.gather(tasks)
     for issue, (retcode, wd) in results:
         if retcode == 0:
             logger.info(f"Issue {issue} marked as started")
@@ -104,7 +105,7 @@ def main():
     config = None
 
     config = load_config(args.config)
-    check_jira(config)
+    asyncio.run(check_jira(config))
 
 
 if __name__ == "__main__":

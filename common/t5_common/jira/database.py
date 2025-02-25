@@ -66,6 +66,8 @@ def get_session(conn_str):
     Session = sessionmaker(bind=engine)
     session = Session()
 
+    return session
+
 
 def init_db():
 
