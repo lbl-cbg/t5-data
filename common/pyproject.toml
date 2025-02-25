@@ -19,7 +19,9 @@ dependencies = [
 ]
 
 [project.scripts]
-check-jira = "t5_common.jira.check_jira:main"
 init-db = "t5_common.jira.workflow.database:init_db"
-finish-job = "t5_common.jira.workflow.steps:finish_job"
-publish-job = "t5_common.jira.workflow.steps:publish_job"
+check-jira = "t5_common.jira.check_jira:main"
+mark-job = "t5_common.jira.mark_job:main"
+
+[tool.setuptools.package-data]
+"t5_commons.jira" = ["schema/*.json"] 

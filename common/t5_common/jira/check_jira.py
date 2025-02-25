@@ -1,50 +1,86 @@
 import argparse
+import asyncio
 import os
+from os.path import abspath, relpath
 import re
 import sys
 import subprocess
 import yaml
 import time
 
-from .jira import JiraConnector
+from . import JiraConnector
+from .utils import load_config, WF_FILENAME
+
 from ..utils import get_logger, read_token
 
 
 logger = get_logger()
 
 
-def check_config(config_path):
-    """Attempt to load new config.
-
-    Return original config if loading new config failed.
-    """
-    try:
-        with open(config_path, 'r') as file:
-            ret = yaml.safe_load(file)
-        logger.info(f"Updated config from {config_path}")
-        last_mtime = curr_mtime
-    except Exception as e:
-        logger.error(f"Unable to load config {config_path}: {e}", file=sys.stderr)
-
-
 def format_query(config):
     return 'project = {project} AND status = "{new_status}"'.format(**config)
 
 
-def process_issue(issue, project_config, config):
+async def process_issue(issue, project_config, config):
+    # Set up environment to run subprocess in
     env = os.environ.copy()
     env['JIRA_HOST'] = config['host']
     env['JIRA_USER'] = config['user']
     env['JIRA_TOKEN'] = read_token(config['token_file'])
 
+    # Set up the command to run in the subprocess
     command = re.split(r'\s+', project_config['command'])
     command.append(issue)
 
-    try:
-        logger.info(f"Processing {issue}: {' '.join(command)}")
-        result = subprocess.run(command, env=env, check=True)
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Unable to run command {' '.join(command)}: {e}")
+    # Set up the working directory to run the job in
+    wd = os.path.join(config['working_directory'], issue['key'])
+    if os.path.exists(wd):
+        raise RuntimeError(f"workflow already started for {issue['key']} - {wd} already exists")
+    else:
+        os.mkdir(wd)
+
+    # Add workflow info to the working directory for subsequence steps
+    wf_info = {
+            'issue': issue['key'],
+            'wfm_database': relpath(abspath(config['database']), abspath(wd)),
+            }
+    with open(os.path.join(wd, WF_FILENAME), 'r') as f:
+        json.dump(wf_info, f)
+
+    # Call the job command in a subprocess
+    logger.info(f"Processing {issue['key']}: {' '.join(command)}")
+    process = await asyncio.create_subprocess_exec(
+        command, *command[1:],
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+        env=env,
+        cwd=wd,
+    )
+    # Read the output and error streams
+    stdout, _ = await process.communicate()
+
+    if process.returncode != 0:
+        logger.error(f"Processing {issue['key']} failed:\n{stdout.decode()}")
+    else:
+        logger.error(f"Processing {issue['key']} succeeded:\n{stdout.decode()}")
+
+    return process.returncode
+
+
+def check_jira(config):
+    # Connect to Jira
+    jc = JiraConnector(jira_host=config['host'],
+                       jira_user=config['user'],
+                       jira_token=read_token(config['token_file']))
+
+    # Check each project queue, and create a new job for each new issue
+    tasks = list()
+    for project_config in config['projects']:
+        query = format_query(project_config)
+        issues = jc.query(query)['issues']
+        for issue in issues:
+            tasks.append(process_issue(issue['key'], project_config, config))
+    results = asyncio.gather(tasks)
 
 
 def main():
@@ -54,17 +90,8 @@ def main():
 
     config = None
 
-    config = check_config(args.config, orig=config)
-
-    jc = JiraConnector(jira_host=config['host'],
-                       jira_user=config['user'],
-                       jira_token=read_token(config['token_file']))
-
-    for project_config in config['projects']:
-        query = format_query(project_config)
-        issues = jc.query(query)['issues']
-        for issue in issues:
-            job_id = process_issue(issue['key'], project_config, config)
+    config = load_config(args.config)
+    check_jira(config)
 
 
 if __name__ == "__main__":
