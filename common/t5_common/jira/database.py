@@ -1,3 +1,5 @@
+import argparse
+
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DDL
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
@@ -114,7 +116,7 @@ class DBConnector:
 
     def finish_job(self, issue):
         job = self.session.query(Jobs).filter_by(issue=issue).first()
-        if job.job_state.name is not 'STARTED':
+        if job.job_state.name != 'STARTED':
             self.logger.error(f"{issue} not started, so cannot finish - job_state = {job.job_state.name}")
             return False
 
@@ -128,7 +130,7 @@ class DBConnector:
 
     def publish_job(self, issue):
         job = self.session.query(Jobs).filter_by(issue=issue).first()
-        if job.job_state.name is not 'FINISHED':
+        if job.job_state.name != 'FINISHED':
             self.logger.error(f"{issue} not finishe, so cannot publish - job_state = {job.job_state.name}")
             return False
 

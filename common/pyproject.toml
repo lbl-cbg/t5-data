@@ -16,12 +16,12 @@ classifiers = [
 ]
 dependencies = [
     "requests",
-    "jsonchema",
+    "jsonschema",
     "sqlalchemy",
 ]
 
 [project.scripts]
-init-db = "t5_common.jira.workflow.database:init_db"
+init-db = "t5_common.jira.database:init_db"
 check-jira = "t5_common.jira.check_jira:main"
 mark-job = "t5_common.jira.mark_job:main"
 

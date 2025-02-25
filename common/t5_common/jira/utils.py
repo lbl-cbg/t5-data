@@ -1,4 +1,5 @@
 from importlib.resources import files
+import json
 
 import yaml
 from jsonschema import validate, ValidationError

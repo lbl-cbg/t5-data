@@ -1,9 +1,11 @@
+import argparse
 from importlib.resources import files
+import json
 
 import yaml
 from jsonschema import validate
 
-from .. import JiraConnector
+from .connector import JiraConnector
 from .utils import load_config, WF_FILENAME
 
 
@@ -50,7 +52,7 @@ def mark_job(step, directory):
 def main():
     parser = argparse.ArgumentParser(description="Mark new status on a job")
     parser.add_argument('step', type=str, choices=list(STEPS.keys()), help='The job state to mark')
-    parser.add_argument('dir', type=str, help='The directory the job was run from', default='./')
+    parser.add_argument('dir', type=str, help='The directory the job was run from', default='./', nargs='?')
     args = parser.parse_args()
 
     mark_job(args.step, args.dir)

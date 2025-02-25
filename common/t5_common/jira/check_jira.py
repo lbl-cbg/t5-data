@@ -1,16 +1,17 @@
 import argparse
 import asyncio
+import json
 import os
 from os.path import abspath, relpath
 import re
 import sys
 import subprocess
-import yaml
 import time
 
-from . import JiraConnector
-from .utils import load_config, WF_FILENAME
+import yaml
 
+from .connector import JiraConnector
+from .utils import load_config, WF_FILENAME
 from ..utils import get_logger, read_token
 
 
@@ -42,7 +43,7 @@ async def process_issue(issue, project_config, config):
     # Add workflow info to the working directory for subsequence steps
     wf_info = {
             'issue': issue['key'],
-            'wfm_database': relpath(abspath(config['database']), abspath(wd)),
+            'database': relpath(abspath(config['database']), abspath(wd)),
             }
     with open(os.path.join(wd, WF_FILENAME), 'r') as f:
         json.dump(wf_info, f)
