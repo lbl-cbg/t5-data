@@ -36,7 +36,7 @@ def mark_job(step, directory):
     # system that this job was started from
     config = load_config()
 
-    database = os.path.join(directory, wf_info['wfm_database'])
+    database = os.path.join(directory, wf_info['database'])
 
     dbc = DBConnector(f"sqlite:///{database}")
 

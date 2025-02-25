@@ -5,9 +5,9 @@
     "issue": {
       "type": "string",
     },
-    "wfm_database": {
+    "database": {
       "type": "string"
       "pattern": "^(?:[a-zA-Z]:\\\\|\\/)?(?:[^\\\\/:*?\"<>|]+\\\\|[^\\\\/:*?\"<>|]+)/?$"
     },
-  "required": ["wfm_database", "issue"]
+  "required": ["database", "issue"]
 }
