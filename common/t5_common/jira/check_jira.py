@@ -64,7 +64,7 @@ async def process_issue(issue, project_config, config):
     else:
         logger.error(f"Processing {issue['key']} succeeded:\n{stdout.decode()}")
 
-    return process.returncode
+    return process.returncode, wd
 
 
 def check_jira(config):
@@ -75,12 +75,24 @@ def check_jira(config):
 
     # Check each project queue, and create a new job for each new issue
     tasks = list()
+    issues = list()
     for project_config in config['projects']:
         query = format_query(project_config)
-        issues = jc.query(query)['issues']
-        for issue in issues:
+        proj_issues = jc.query(query)['issues']
+        for issue in proj_issues:
+            issues.append(issue['key'])
             tasks.append(process_issue(issue['key'], project_config, config))
+
+    database = config['database']
+    dbc = DBConnector(f"sqlite:///{database}")
+
     results = asyncio.gather(tasks)
+    for issue, (retcode, wd) in results:
+        if retcode == 0:
+            logger.info(f"Issue {issue} marked as started")
+            db.start_job(wd)
+        else:
+            logger.info(f"Issue {issue} failed -- not marking as started")
 
 
 def main():
