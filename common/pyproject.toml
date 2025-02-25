@@ -15,7 +15,9 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "requests"
+    "requests",
+    "jsonchema",
+    "sqlalchemy",
 ]
 
 [project.scripts]
