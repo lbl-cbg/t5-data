@@ -4,10 +4,12 @@
   "properties": {
     "issue": {
       "type": "string",
+      "description": "The Jira issue key"
     },
     "database": {
       "type": "string",
-      "pattern": "^(?:[a-zA-Z]:\\\\|\\/)?(?:[^\\\\/:*?\"<>|]+\\\\|[^\\\\/:*?\"<>|]+)/?$"
-    },
+      "description": "The database used for tracking workflows"
+    }
+  },
   "required": ["database", "issue"]
 }

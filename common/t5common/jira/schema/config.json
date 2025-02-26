@@ -20,6 +20,10 @@
       "type": "string",
       "description": "The path to the SQLite database to containing workflow information"
     },
+    "job_directory": {
+      "type": "string",
+      "description": "The directory to save jobs to. Defaults to current working directory."
+    },
     "projects": {
       "type": "array",
       "description": "Information required to start workflows from a Jira project",

@@ -1,11 +1,14 @@
 import argparse
 from importlib.resources import files
 import json
+import os
+import sys
 
 import yaml
-from jsonschema import validate
+from jsonschema import validate, ValidationError
 
 from .connector import JiraConnector
+from .database import DBConnector
 from .utils import load_config, WF_FILENAME
 
 
@@ -16,7 +19,7 @@ def _load_schema():
     return schema
 
 
-def get_database(directory)
+def load_info(directory):
     schema = _load_schema()
 
     wf_info_path = os.path.join(directory, WF_FILENAME)
@@ -24,7 +27,7 @@ def get_database(directory)
         wf_info = json.load(file)
 
     try:
-        validate(instance=wf_info_path, schema=schema)
+        validate(instance=wf_info, schema=schema)
     except ValidationError as ve:
         print("Invalid workflow info file {wf_info_path}: {ve}", file=sys.stderr)
         exit(3)
@@ -32,7 +35,7 @@ def get_database(directory)
     # Get the configuration file for the instance of the workflow management
     # system that this job was started from
     database = os.path.join(directory, wf_info['database'])
-    return database
+    return wf_info['issue'], database
 
 
 STEPS = {
@@ -40,15 +43,17 @@ STEPS = {
         'published': 'publish_job'
         }
 
-def mark_job(step, database):
+def mark_job(step, directory):
+
+    issue, database = load_info(directory)
 
     dbc = DBConnector(f"sqlite:///{database}")
 
-    method = getattr(dbc, step)
+    method = getattr(dbc, STEPS[step])
 
     method(issue)
 
-    connector.close()
+    dbc.close()
 
 
 def main():
@@ -57,9 +62,8 @@ def main():
     parser.add_argument('dir', type=str, help='The directory the job was run from', default='./', nargs='?')
     args = parser.parse_args()
 
-    database = get_database(args.dir)
 
-    mark_job(args.step, database)
+    mark_job(args.step, args.dir)
 
 
 if __name__ == "__main__":

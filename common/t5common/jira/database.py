@@ -1,11 +1,11 @@
 import argparse
 
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DDL
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from sqlalchemy import event
 
 from .utils import load_config
+from ..utils import get_logger
 
 # Create a base class for declarative class definitions
 Base = declarative_base()
@@ -42,7 +42,14 @@ class JobStateHistory(Base):
     job_state_id = Column(Integer, ForeignKey('job_states.id'), nullable=False)
     timestamp = Column(String, nullable=False)
 
+
 def get_session(conn_str):
+
+    return session
+
+
+def initialize_database(database):
+    conn_str = f"sqlite:///{database}"
 
     # Create an SQLite database and the tables
     engine = create_engine(conn_str)
@@ -66,20 +73,6 @@ def get_session(conn_str):
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    return session
-
-
-def init_db():
-
-    parser = argparse.ArgumentParser(description="Set up a database for a Jira workflow tracker")
-    parser.add_argument('config', type=str, help='the config file for the Jira workflow management instance')
-    args = parser.parse_args()
-
-    config = load_config(args.config)
-    conn_str = f"sqlite:///{config['database']}"
-
-    session = get_session(conn_str)
-
     states = session.query(JobStates).count()
     if states > 0:
         print("Database has already been initialized. Doing nothing.")
@@ -96,33 +89,47 @@ def init_db():
         session.close()
 
 
+def init_db():
+
+    parser = argparse.ArgumentParser(description="Set up a database for a Jira workflow tracker")
+    parser.add_argument('config', type=str, help='the config file for the Jira workflow management instance')
+    args = parser.parse_args()
+
+    config = load_config(args.config)
+    initialize_database(config['database'])
+
 class DBConnector:
 
     def __init__(self, conn_str):
         self.logger = get_logger()
-        self.session = get_session(conn_str)
+        engine = create_engine(conn_str)
+        Session = sessionmaker(bind=engine)
+        self.session = Session()
 
     def start_job(self, issue, job_directory):
         self.logger.info(f"Creating new job for {issue}")
         start_state = self.session.query(JobStates).filter_by(name='STARTED').first()
-        return Job(issue=issue, job_directory=job_directory, job_state=start_state)
+        job = Job(issue=issue, job_directory=job_directory, job_state=start_state)
+        self.session.add(job)
+        self.session.commit()
+        return job
 
     def transition_job(self, issue, state):
-        job = self.session.query(Jobs).filter_by(issue=issue).first()
+        job = self.session.query(Job).filter_by(issue=issue).first()
         if job:
-            finish_state = session.query(JobStates).filter_by(name=state).first()
+            finish_state = self.session.query(JobStates).filter_by(name=state).first()
             job.job_state = finish_state
-            session.commit()
+            self.session.commit()
             return True
         return False
 
     def finish_job(self, issue):
-        job = self.session.query(Jobs).filter_by(issue=issue).first()
+        job = self.session.query(Job).filter_by(issue=issue).first()
         if job.job_state.name != 'STARTED':
             self.logger.error(f"{issue} not started, so cannot finish - job_state = {job.job_state.name}")
             return False
 
-        result = transition_job(issue, 'FINISHED')
+        result = self.transition_job(issue, 'FINISHED')
         if result:
             self.logger.info(f"Finishing job for {issue}")
             return True
@@ -131,15 +138,18 @@ class DBConnector:
             return False
 
     def publish_job(self, issue):
-        job = self.session.query(Jobs).filter_by(issue=issue).first()
+        job = self.session.query(Job).filter_by(issue=issue).first()
         if job.job_state.name != 'FINISHED':
             self.logger.error(f"{issue} not finishe, so cannot publish - job_state = {job.job_state.name}")
             return False
 
-        result = transition_job(issue, 'PUBLISHED')
+        result = self.transition_job(issue, 'PUBLISHED')
         if result:
             self.logger.info(f"Publishing job for {issue}")
             return True
         else:
             self.logger.error(f"Could not find a job for {issue}")
             return False
+
+    def close(self):
+        self.session.close()

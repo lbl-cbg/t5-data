@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 
+
 def parse_logger(string, stream=sys.stderr, level='info'):
     if not string:
         ret = logging.getLogger()
@@ -17,8 +18,11 @@ def parse_logger(string, stream=sys.stderr, level='info'):
     return ret
 
 
+_logger = None
 def get_logger(level='info'):
-    return parse_logger('', level=level)
+    global _logger
+    _logger = _logger or parse_logger(None, level=level)
+    return _logger
 
 
 def read_token(path):

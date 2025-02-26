@@ -35,24 +35,24 @@ async def process_issue(issue, project_config, config):
     command.append(issue)
 
     # Set up the working directory to run the job in
-    wd = os.path.join(config['working_directory'], issue['key'])
+    wd = os.path.join(config.get('job_directory', '.'), issue)
     if os.path.exists(wd):
-        raise RuntimeError(f"workflow already started for {issue['key']} - {wd} already exists")
+        raise RuntimeError(f"workflow already started for {issue} - {wd} already exists")
     else:
         os.mkdir(wd)
 
     # Add workflow info to the working directory for subsequence steps
     wf_info = {
-            'issue': issue['key'],
+            'issue': issue,
             'database': relpath(abspath(config['database']), abspath(wd)),
             }
-    with open(os.path.join(wd, WF_FILENAME), 'r') as f:
+    with open(os.path.join(wd, WF_FILENAME), 'w') as f:
         json.dump(wf_info, f)
 
     # Call the job command in a subprocess
-    logger.info(f"Processing {issue['key']}: {' '.join(command)}")
+    logger.info(f"Processing {issue}: {' '.join(command)}")
     process = await asyncio.create_subprocess_exec(
-        command, *command[1:],
+        command[0], *command[1:],
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
         env=env,
@@ -62,9 +62,12 @@ async def process_issue(issue, project_config, config):
     stdout, _ = await process.communicate()
 
     if process.returncode != 0:
-        logger.error(f"Processing {issue['key']} failed:\n{stdout.decode()}")
+        logger.error(f"Processing {issue} failed:\n{stdout.decode()}")
     else:
-        logger.error(f"Processing {issue['key']} succeeded:\n{stdout.decode()}")
+        msg = f"Processing {issue} succeeded:"
+        if len(stdout) > 0:
+            msg += f"\n{stdout.decode()}"
+        logger.info(msg)
 
     return process.returncode, wd
 
@@ -88,13 +91,15 @@ async def check_jira(config):
     database = config['database']
     dbc = DBConnector(f"sqlite:///{database}")
 
-    results = await asyncio.gather(tasks)
-    for issue, (retcode, wd) in results:
+    results = await asyncio.gather(*tasks)
+    for issue, (retcode, wd) in zip(issues, results):
         if retcode == 0:
             logger.info(f"Issue {issue} marked as started")
-            db.start_job(wd)
+            dbc.start_job(issue, wd)
         else:
             logger.info(f"Issue {issue} failed -- not marking as started")
+
+    dbc.close()
 
 
 def main():
